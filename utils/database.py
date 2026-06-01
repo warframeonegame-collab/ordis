@@ -49,7 +49,6 @@ class Database:
                     'position': '',
                     'joined_at': datetime.now().strftime('%d.%m.%Y'),
                     'xp': 0,
-                    'description': "",  # Исправлено опечатка в 'description'
                     'level': 1
                 }
                 self.save_data()
@@ -58,16 +57,11 @@ class Database:
             print(f"Ошибка при получении данных пользователя: {str(e)}")
             return {}  # Возвращаем пустой словарь, а не None
 
+
     def update_user(self, user_id, **kwargs):
-        """Обновляет данные пользователя с сохранением position"""
+        """Обновляет данные пользователя"""
         try:
             user = self.get_user(user_id)
-            
-            # Сохраняем текущее значение position, если оно не передано
-            if 'position' not in kwargs:
-                kwargs['position'] = user.get('position', '')
-            
-            # Проверки на корректность данных
             if 'xp' in kwargs and kwargs['xp'] < 0:
                 raise ValueError("Опыт не может быть отрицательным")
             if 'level' in kwargs and kwargs['level'] < 1:
@@ -79,47 +73,34 @@ class Database:
             print(f"Ошибка при обновлении данных пользователя: {str(e)}")
 
     def add_xp(self, user_id, amount):
+        """Добавляет опыт пользователю"""
         try:
             if amount < 0:
                 raise ValueError("Количество опыта не может быть отрицательным")
             
             user = self.get_user(user_id)
-            
-            # Сохраняем существующие значения перед обновлением
-            existing_data = {
-                'position': user.get('position', ''),
-                'nickname': user.get('nickname', ''),
-                'description': user.get('description', '')
-            }
-            
             user['xp'] += amount
             self.calculate_level(user)
-            
-            # Восстанавливаем сохраненные значения
-            user.update(existing_data)
-            
             self.save_data()
             print(f"Добавлено {amount} XP пользователю {user_id}")
         except Exception as e:
             print(f"Ошибка при добавлении опыта: {str(e)}")
 
-    def update_user(self, user_id, **kwargs):
+    def calculate_level(self, user):
+        """Рассчитывает уровень пользователя"""
         try:
-            user = self.get_user(user_id)
+            current_level = user['level']
+            while True:
+                required_xp = config.LEVEL_MULTIPLIER * current_level ** 2
+                if user['xp'] < required_xp:
+                    break
+                current_level += 1
             
-            # Сохраняем существующие значения position и других полей
-            if 'position' not in kwargs:
-                kwargs['position'] = user.get('position', '')
-            
-            # Сохраняем все существующие поля, которых нет в kwargs
-            for key in user:
-                if key not in kwargs:
-                    kwargs[key] = user[key]
-            
-            user.update(kwargs)
-            self.save_data()
+            if current_level != user['level']:
+                user['level'] = current_level
+                print(f"Уровень повышен до {current_level}")
         except Exception as e:
-            print(f"Ошибка при обновлении данных пользователя: {str(e)}")
+            print(f"Ошибка при расчете уровня: {str(e)}")
 
     def refresh(self, user_id=None):
         """Перезагружает данные из файла. 
@@ -136,22 +117,3 @@ class Database:
                 print("Все данные базы данных успешно обновлены")
         except Exception as e:
             print(f"Ошибка при обновлении данных: {str(e)}")
-
-    def delete_user(self, user_id):
-        """Удаляет пользователя из базы"""
-        try:
-            user_id = str(user_id)
-            if user_id in self.data:
-                del self.data[user_id]
-                self.save_data()
-                print(f"Пользователь {user_id} удален")
-        except Exception as e:
-            print(f"Ошибка при удалении пользователя: {str(e)}")
-
-    def get_all_users(self):
-        """Возвращает всех пользователей"""
-        return self.data
-
-    def __del__(self):
-        """Сохраняет данные при уничтожении объекта"""
-        self.save_data()
