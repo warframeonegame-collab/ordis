@@ -1,7 +1,7 @@
 {
     "436827887165898752": {
         "nickname": "",
-        "position": "Основатель",
+        "position": "",
         "joined_at": "30.05.2026",
         "xp": 12,
         "discription": "",
@@ -9,17 +9,25 @@
     },
     "748069725698785381": {
         "nickname": "",
-        "position": "Со-основатель",
+        "position": "",
         "joined_at": "30.05.2026",
-        "xp": 42,
+        "xp": 1078,
         "discription": "",
-        "level": 1
+        "level": 3
     },
     "449658439774502922": {
         "nickname": "",
-        "position": "Заместитель",
-        "joined_at": "30.05.2026",
-        "xp": 0,
+        "position": "",
+        "joined_at": "31.05.2026",
+        "xp": 5,
+        "discription": "",
+        "level": 1
+    },
+    "1497338163494916147": {
+        "nickname": "",
+        "position": "",
+        "joined_at": "31.05.2026",
+        "xp": 61,
         "discription": "",
         "level": 1
     }
