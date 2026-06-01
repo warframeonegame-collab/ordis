@@ -79,34 +79,47 @@ class Database:
             print(f"Ошибка при обновлении данных пользователя: {str(e)}")
 
     def add_xp(self, user_id, amount):
-        """Добавляет опыт пользователю"""
         try:
             if amount < 0:
                 raise ValueError("Количество опыта не может быть отрицательным")
             
             user = self.get_user(user_id)
+            
+            # Сохраняем существующие значения перед обновлением
+            existing_data = {
+                'position': user.get('position', ''),
+                'nickname': user.get('nickname', ''),
+                'description': user.get('description', '')
+            }
+            
             user['xp'] += amount
             self.calculate_level(user)
+            
+            # Восстанавливаем сохраненные значения
+            user.update(existing_data)
+            
             self.save_data()
             print(f"Добавлено {amount} XP пользователю {user_id}")
         except Exception as e:
             print(f"Ошибка при добавлении опыта: {str(e)}")
 
-    def calculate_level(self, user):
-        """Рассчитывает уровень пользователя"""
+    def update_user(self, user_id, **kwargs):
         try:
-            current_level = user['level']
-            while True:
-                required_xp = config.LEVEL_MULTIPLIER * current_level ** 2
-                if user['xp'] < required_xp:
-                    break
-                current_level += 1
+            user = self.get_user(user_id)
             
-            if current_level != user['level']:
-                user['level'] = current_level
-                print(f"Уровень повышен до {current_level}")
+            # Сохраняем существующие значения position и других полей
+            if 'position' not in kwargs:
+                kwargs['position'] = user.get('position', '')
+            
+            # Сохраняем все существующие поля, которых нет в kwargs
+            for key in user:
+                if key not in kwargs:
+                    kwargs[key] = user[key]
+            
+            user.update(kwargs)
+            self.save_data()
         except Exception as e:
-            print(f"Ошибка при расчете уровня: {str(e)}")
+            print(f"Ошибка при обновлении данных пользователя: {str(e)}")
 
     def refresh(self, user_id=None):
         """Перезагружает данные из файла. 
