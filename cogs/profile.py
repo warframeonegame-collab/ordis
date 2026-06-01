@@ -9,7 +9,7 @@ class ProfileSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        self.excluded_commands = ['profile', 'help', 'setper', 'setlvl', 'updatetable']
+        self.excluded_commands = ['profile', 'help', 'setprofile', 'updatetable']
         self.forbidden_channels = [
             1257267587432058993,  # ID первого запрещенного канала
             1501029076478201896, # ID второго запрещенного канала
@@ -195,7 +195,7 @@ class ProfileSystem(commands.Cog):
                 name="🛠️ Административные команды",
                 value=(
                     "**Управление пользователями:**\n"
-                    "`.setprofile <пользователь> <переменная=>` - установить должность\n"
+                    "`.setprofile <пользователь> <переменная=значение>` - изменение профиля\n"
                     "**Система:**\n"
                     "`.updatetable` - обновить таблицу лидеров"
                 ),
