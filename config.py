@@ -14,7 +14,7 @@ GUEST_ROLE_ID = 1510307677409120256        # Роль "Гость"
 MEMBER_ROLE_ID = 1493217622123352134         # Роль "Участник клана"
 
 # 📊 Система уровней
-DB_FILE = 'database.json'  # Файл базы данных
+DB_FILE = '/app/data/database.json'  # Файл базы данных
 XP_PER_MESSAGE = 5  # Опыт за сообщение
 LEVEL_MULTIPLIER = 100  # Множитель уровня
 
