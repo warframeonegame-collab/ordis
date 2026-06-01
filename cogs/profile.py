@@ -213,28 +213,56 @@ class ProfileSystem(commands.Cog):
         except Exception as e:
             print(f"Ошибка при удалении сообщения: {str(e)}")
 
-    @commands.command(name="setper")
+    @commands.command(name="setprofile")
     @commands.has_permissions(administrator=True)
-    async def setper(self, ctx, member: discord.Member, *, position):
+    async def setprofile(self, ctx, member: discord.Member, *, args: str):
         try:
             await ctx.message.delete()
-            self.db.update_user(member.id, position=position)
-            await ctx.send(f"Должность для {member.name} установлена: {position}", ephemeral=True, delete_after=5)
+        
+        # Парсим входные параметры
+            params = {}
+            for arg in args.split():
+                if '=' in arg:
+                    key, value = arg.split('=', 1)
+                    key = key.strip().lower()
+                    if key == 'level':
+                        try:
+                            value = int(value)
+                        except ValueError:
+                            raise ValueError("Уровень должен быть числом")
+                    params[key] = value
+        
+        # Проверяем обязательные параметры
+                if not params:
+                    raise ValueError("Не указаны параметры для изменения")
+        
+        # Формируем данные для обновления
+                update_data = {}
+        
+                if 'position' in params:
+                    update_data['position'] = params['position']
+        
+                if 'level' in params:
+                    level = params['level']
+                    if level < 1:
+                        raise ValueError("Уровень должен быть больше 0")
+                    update_data['level'] = level
+                    update_data['xp'] = config.LEVEL_MULTIPLIER * level**2
+        
+        # Обновляем профиль
+                self.db.update_user(member.id, **update_data)
+        
+        # Формируем сообщение об успехе
+                success_message = f"Профиль для {member.name} обновлен:\n"
+                for key, value in update_data.items():
+                    success_message += f"- {key.capitalize()}: {value}\n"
+        
+                await ctx.send(success_message, ephemeral=True, delete_after=10)
+        
         except Exception as e:
-            await ctx.send(f"Ошибка при установке должности: {str(e)}")
+            await ctx.send(f"Ошибка при обновлении профиля: {str(e)}", delete_after=10)
 
-    @commands.command(name="setlvl")
-    @commands.has_permissions(administrator=True)
-    async def setlvl(self, ctx, member: discord.Member, level: int):
-        try:
-            await ctx.message.delete()
-            user = self.db.get_user(member.id)
-            user['level'] = level
-            user['xp'] = config.LEVEL_MULTIPLIER * level**2
-            self.db.save_data()
-            await ctx.send(f"Уровень для {member.name} установлен: {level}", ephemeral=True, delete_after=5)
-        except Exception as e:
-            await ctx.send(f"Ошибка при установке уровня: {str(e)}")
+
 
 
 # --- Система уровней (ОПЦИОНАЛЬНО) ---
