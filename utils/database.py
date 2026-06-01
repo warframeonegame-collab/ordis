@@ -102,6 +102,14 @@ class Database:
                 print(f"Уровень повышен до {current_level}")
         except Exception as e:
             print(f"Ошибка при расчете уровня: {str(e)}")
+            
+    def update_user(self, user_id, **kwargs):
+     user = self.get_user(user_id)
+    # Сохраняем существующее значение position, если оно есть
+     if 'position' not in kwargs:
+        kwargs['position'] = user.get('position', '')
+     user.update(kwargs)
+     self.save_data()
 
     def refresh(self, user_id=None):
         """Перезагружает данные из файла. 
