@@ -90,7 +90,9 @@ class ProfileSystem(commands.Cog):
 
         embed.add_field(name="📋 Никнейм", value=user['nickname'] or member.display_name, inline=False)
         embed.add_field(name="🥉 Тир", value=user_tier, inline=False)
-        embed.add_field(name="🏷️ Должность", value=user['position'] if user['position'] else "Не указана", inline=False)
+        user_data = self.bd.get_user(member.id)
+        if 'position' in user_data:
+            embed.add_field(name="🏷️ Должность", value=user['position'], inline=False)
 
         embed.add_field(
             name="📅 Дата вступления", 
@@ -195,7 +197,7 @@ class ProfileSystem(commands.Cog):
                 name="🛠️ Административные команды",
                 value=(
                     "**Управление пользователями:**\n"
-                    "`.setprofile <пользователь> <переменная=значение>` - изменение профиля\n"
+                    "`.setposition <пользователь>` - изменение должности\n"
                     "**Система:**\n"
                     "`.updatetable` - обновить таблицу лидеров"
                 ),
@@ -212,54 +214,19 @@ class ProfileSystem(commands.Cog):
         except Exception as e:
             print(f"Ошибка при удалении сообщения: {str(e)}")
 
-    @commands.command(name="setprofile")
+    @commands.command(name="setposition")
     @commands.has_permissions(administrator=True)
-    async def setprofile(self, ctx, member: discord.Member, *, args: str):
+    async def set_position(self, ctx, member: discord.Member, *, position: str):
         try:
-            await ctx.message.delete()
-        
-        # Парсим входные параметры
-            params = {}
-            for arg in args.split():
-                if '=' in arg:
-                    key, value = arg.split('=', 1)
-                    key = key.strip().lower()
-                    if key == 'level':
-                        try:
-                            value = int(value)
-                        except ValueError:
-                            raise ValueError("Уровень должен быть числом")
-                    params[key] = value
-        
-        # Проверяем обязательные параметры
-                if not params:
-                    raise ValueError("Не указаны параметры для изменения")
-        
-        # Формируем данные для обновления
-                update_data = {}
-        
-                if 'position' in params:
-                    update_data['position'] = params['position']
-        
-                if 'level' in params:
-                    level = params['level']
-                    if level < 1:
-                        raise ValueError("Уровень должен быть больше 0")
-                    update_data['level'] = level
-                    update_data['xp'] = config.LEVEL_MULTIPLIER * level**2
-        
-        # Обновляем профиль
-                self.db.update_user(member.id, **update_data)
-        
-        # Формируем сообщение об успехе
-                success_message = f"Профиль для {member.name} обновлен:\n"
-                for key, value in update_data.items():
-                    success_message += f"- {key.capitalize()}: {value}\n"
-        
-                await ctx.send(success_message, ephemeral=True, delete_after=10)
+            if not position.strip():
+                raise ValueError("Позиция не может быть пустой")
+            
+            self.db.update_user(member.id, position=position)
+            await ctx.send(f"Должность для {member.mention} успешно установлена", delete_after=10)
         
         except Exception as e:
-            await ctx.send(f"Ошибка при обновлении профиля: {str(e)}", delete_after=10)
+            await ctx.send(f"Ошибка: {str(e)}", delete_after=10)
+
 
 
 

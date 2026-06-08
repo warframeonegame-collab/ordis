@@ -58,5 +58,5 @@ class RoleManager(commands.Cog):
         elif isinstance(error, commands.BadArgument):
             await ctx.send("❌ Ошибка в аргументах команды", delete_after=10)
 
-async def setup(bot):
-    await bot.add_cog(RoleManager(bot))
+#async def setup(bot):
+    #await bot.add_cog(RoleManager(bot))
