@@ -90,7 +90,7 @@ class ProfileSystem(commands.Cog):
 
         embed.add_field(name="📋 Никнейм", value=user['nickname'] or member.display_name, inline=False)
         embed.add_field(name="🥉 Тир", value=user_tier, inline=False)
-        user_data = self.bd.get_user(member.id)
+        user_data = self.db.get_user(member.id)
         if 'position' in user_data:
             embed.add_field(name="🏷️ Должность", value=user['position'], inline=False)
 
