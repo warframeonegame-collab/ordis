@@ -16,15 +16,19 @@ class Database:
             os.makedirs(directory)
 
     def load_data(self):
-        """Загружает данные из JSON-файла"""
+        data = {}
+    # Загрузка данных из файла
         try:
-            if os.path.exists(self.db_file):
-                with open(self.db_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            return {}
-        except Exception as e:
-            print(f"Ошибка при загрузке данных: {str(e)}")
-            return {}
+            with open(self.filename, 'r') as file:
+                data = json.load(file)
+            # Проверка наличия позиции у каждого пользователя
+                for user_id in data:
+                    if 'position' not in data[user_id]:
+                        data[user_id]['position'] = None  # или пустая строка
+        except FileNotFoundError:
+            pass
+        return data
+
 
     def save_data(self):
         """Сохраняет данные в JSON-файл"""
@@ -44,9 +48,9 @@ class Database:
         try:
             user_id = str(user_id)
             if user_id not in self.data:
-                self.data[user_id] = {
+                self.data[str(user_id)] = {
                     'nickname': '',
-                    'position': '',
+                    'position': None,
                     'joined_at': datetime.now().strftime('%d.%m.%Y'),
                     'xp': 0,
                     'description': "",  # Исправлено опечатка в 'description'
@@ -62,8 +66,8 @@ class Database:
         user = self.data.get(str(user_id), {})
     
     # Позиция обновляется только при явном указании
-        if 'position' in kwargs:
-            user['position'] = kwargs['position']
+        if 'position' not in kwargs and 'position' in user:
+            kwargs['position'] = user['position']
     
     # Другие параметры обновляются как обычно
         for key, value in kwargs.items():
