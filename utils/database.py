@@ -16,19 +16,19 @@ class Database:
             os.makedirs(directory)
 
     def load_data(self):
-        data = {}
-    # Загрузка данных из файла
+        """Загружает данные из JSON-файла"""
         try:
-            with open(self.filename, 'r') as file:
-                data = json.load(file)
-            # Проверка наличия позиции у каждого пользователя
-                for user_id in data:
-                    if 'position' not in data[user_id]:
-                        data[user_id]['position'] = None  # или пустая строка
-        except FileNotFoundError:
-            pass
-        return data
-
+            if os.path.exists(self.db_file):
+                with open(self.db_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for user_id in data:
+                        if 'position' not in data[user_id]:
+                            data[user_id]['position'] = None
+                return data
+            return {}
+        except Exception as e:
+            print(f"Ошибка при загрузке данных: {str(e)}")
+            return {}
 
     def save_data(self):
         """Сохраняет данные в JSON-файл"""
