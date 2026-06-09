@@ -179,7 +179,6 @@ class ProfileSystem(commands.Cog):
                 "`.setprofile @user --position \"текст\"` - полная настройка профиля\n"
                 "`.setprofile @user --level N` - установить уровень\n"
                 "`.setprofile @user --xp N` - установить опыт\n"
-                "`.setprofile @user --subdivision \"текст\"` - установить подразделение\n"
                 "**Система:**\n"
                 "`.updatetable` - обновить таблицу лидеров"
             )
@@ -189,15 +188,8 @@ class ProfileSystem(commands.Cog):
                 inline=False
             )
         
-        # Проверяем доступ к setsubdivision по ролям
-        has_sub_permission = False
-        for role_id in config.SUBDIVISION_ROLE_IDS:
-            role = ctx.guild.get_role(role_id)
-            if role and role in ctx.author.roles:
-                has_sub_permission = True
-                break
-        
-        if has_sub_permission and not ctx.author.guild_permissions.administrator:
+        # Команду setsubdivision видят только роль 1493218079528976414 и администраторы
+        if discord.utils.get(ctx.author.roles, id=config.SUBDIVISION_ROLE_ID) or ctx.author.guild_permissions.administrator:
             embed.add_field(
                 name="📁 Управление подразделениями",
                 value="`.setsubdivision @user <название>` - установить подразделение",
@@ -292,13 +284,8 @@ class ProfileSystem(commands.Cog):
         try:
             await ctx.message.delete()
             
-            # Проверяем хотя бы одну из разрешённых ролей
-            has_permission = False
-            for role_id in config.SUBDIVISION_ROLE_IDS:
-                role = ctx.guild.get_role(role_id)
-                if role and role in ctx.author.roles:
-                    has_permission = True
-                    break
+            # Проверяем роль или права администратора
+            has_permission = discord.utils.get(ctx.author.roles, id=config.SUBDIVISION_ROLE_ID) is not None or ctx.author.guild_permissions.administrator
             
             if not has_permission:
                 await ctx.send("❌ У вас нет прав для использования этой команды.", ephemeral=True, delete_after=10)
