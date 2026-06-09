@@ -196,7 +196,7 @@ class Logs(commands.Cog):
             executor = None
             async for entry in before.guild.audit_logs(limit=5, action=discord.AuditLogAction.member_role_update):
                 if entry.target == before:
-                    executor =                    executor = entry.user
+                    executor = entry.user
                     break
 
 

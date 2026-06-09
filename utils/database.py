@@ -32,6 +32,8 @@ class Database:
                     for user_id in data:
                         if 'position' not in data[user_id]:
                             data[user_id]['position'] = None
+                        if 'subdivision' not in data[user_id]:
+                            data[user_id]['subdivision'] = None
                 return data
             return {}
         except Exception as e:
@@ -59,6 +61,7 @@ class Database:
                 self.data[str(user_id)] = {
                     'nickname': '',
                     'position': None,
+                    'subdivision': None,
                     'joined_at': datetime.now().strftime('%d.%m.%Y'),
                     'xp': 0,
                     'description': "",  # Исправлено опечатка в 'description'

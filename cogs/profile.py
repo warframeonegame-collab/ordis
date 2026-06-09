@@ -9,7 +9,7 @@ class ProfileSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        self.excluded_commands = ['profile', 'help', 'setprofile', 'updatetable']
+        self.excluded_commands = ['profile', 'help', 'setprofile', 'setsubdivision', 'updatetable']
         self.forbidden_channels = [
             1257267587432058993,  # ID первого запрещенного канала
             1501029076478201896, # ID второго запрещенного канала
@@ -91,8 +91,10 @@ class ProfileSystem(commands.Cog):
         embed.add_field(name="📋 Никнейм", value=user['nickname'] or member.display_name, inline=False)
         embed.add_field(name="🥉 Тир", value=user_tier, inline=False)
         user_data = self.db.get_user(member.id)
-        if 'position' in user_data:
+        if user.get('position'):
             embed.add_field(name="🏷️ Должность", value=user['position'], inline=False)
+        if user.get('subdivision'):
+            embed.add_field(name="📁 Подразделение", value=user['subdivision'], inline=False)
 
         embed.add_field(
             name="📅 Дата вступления", 
@@ -149,27 +151,6 @@ class ProfileSystem(commands.Cog):
         await ctx.message.delete()
         await ctx.send(embed=embed, delete_after=60)
 
-
-    async def force_update_user_data(self, user_id):
-        try:
-            # Проверяем существование пользователя
-            if not self.db.user_exists(user_id):
-                # Создаем нового пользователя
-                self.db.create_user(user_id, {
-                    'nickname': '',
-                    'position': '',
-                    'joined_at': datetime.now().strftime('%d.%m.%Y'),
-                    'xp': 0,
-                    'level': 1
-                })
-            
-            # Обновляем данные пользователя
-            user = self.db.get_user(user_id)
-            # Здесь можно добавить дополнительную логику обновления
-            self.db.save_data()
-            
-        except Exception as e:
-            print(f"Ошибка при принудительном обновлении данных пользователя: {str(e)}")
     # --- Административные команды (РАБОТАЮТ ВСЕГДА) ---
     @commands.command(name="help")
     async def help_command(self, ctx):
@@ -197,7 +178,11 @@ class ProfileSystem(commands.Cog):
                 name="🛠️ Административные команды",
                 value=(
                     "**Управление пользователями:**\n"
-                    "`.setper <пользователь>` - изменение должности\n"
+                    "`.setprofile @user --position \"текст\"` - полная настройка профиля\n"
+                    "`.setprofile @user --level N` - установить уровень\n"
+                    "`.setprofile @user --xp N` - установить опыт\n"
+                    "`.setprofile @user --subdivision \"текст\"` - установить подразделение\n"
+                    "`.setsubdivision @user <название>` - установить подразделение\n"
                     "**Система:**\n"
                     "`.updatetable` - обновить таблицу лидеров"
                 ),
@@ -214,15 +199,98 @@ class ProfileSystem(commands.Cog):
         except Exception as e:
             print(f"Ошибка при удалении сообщения: {str(e)}")
 
-    @commands.command(name="setper")
+    @commands.command(name="setprofile")
     @commands.has_permissions(administrator=True)
-    async def setper(self, ctx, member: discord.Member, *, position):
+    async def setprofile(self, ctx, member: discord.Member, *, args: str = ""):
+        """Устанавливает профиль пользователя.
+        Формат: .setprofile @user --position "текст" --level 5 --xp 100 --subdivision "название" """
         try:
             await ctx.message.delete()
-            self.db.update_user(member.id, position=position)
-            await ctx.send(f"Должность для {member.name} установлена: {position}", ephemeral=True, delete_after=5)
+            
+            if not args:
+                await ctx.send("Укажите хотя бы один параметр. Формат: `.setprofile @user --position \"текст\" --level 5 --xp 100 --subdivision \"название\"`", ephemeral=True, delete_after=10)
+                return
+            
+            import re
+            update_data = {}
+            
+            # --position "текст в кавычках"
+            pos_match = re.search(r'--position\s+"([^"]*)"', args)
+            if pos_match:
+                update_data['position'] = pos_match.group(1)
+            
+            # --subdivision "текст в кавычках"
+            sub_match = re.search(r'--subdivision\s+"([^"]*)"', args)
+            if sub_match:
+                update_data['subdivision'] = sub_match.group(1)
+            
+            # --level число
+            lvl_match = re.search(r'--level\s+(\d+)', args)
+            if lvl_match:
+                level = int(lvl_match.group(1))
+                if level < 1:
+                    raise ValueError("Уровень не может быть меньше 1")
+                update_data['level'] = level
+            
+            # --xp число
+            xp_match = re.search(r'--xp\s+(\d+)', args)
+            if xp_match:
+                xp_val = int(xp_match.group(1))
+                if xp_val < 0:
+                    raise ValueError("Опыт не может быть отрицательным")
+                update_data['xp'] = xp_val
+            
+            if not update_data:
+                await ctx.send("Не распознаны параметры. Используйте: `--position \"текст\"`, `--subdivision \"текст\"`, `--level число`, `--xp число`", ephemeral=True, delete_after=10)
+                return
+            
+            # Автоматически пересчитываем уровень, если задан только xp
+            if 'xp' in update_data and 'level' not in update_data:
+                temp_xp = update_data['xp']
+                new_level = 1
+                while True:
+                    required = config.LEVEL_MULTIPLIER * new_level ** 2
+                    if temp_xp < required:
+                        break
+                    new_level += 1
+                update_data['level'] = new_level
+            
+            self.db.update_user(member.id, **update_data)
+            
+            parts = []
+            if 'position' in update_data:
+                parts.append(f"должность → {update_data['position']}")
+            if 'subdivision' in update_data:
+                parts.append(f"подразделение → {update_data['subdivision']}")
+            if 'level' in update_data:
+                parts.append(f"уровень → {update_data['level']}")
+            if 'xp' in update_data:
+                parts.append(f"опыт → {update_data['xp']}")
+            
+            await ctx.send(f"✅ Профиль {member.name} обновлён: {', '.join(parts)}", ephemeral=True, delete_after=5)
         except Exception as e:
-            await ctx.send(f"Ошибка при установке должности: {str(e)}")
+            await ctx.send(f"❌ Ошибка: {str(e)}")
+
+    @commands.command(name="setsubdivision")
+    async def setsubdivision(self, ctx, member: discord.Member, *, subdivision: str):
+        """Устанавливает подразделение пользователю (только для роли с правом назначения)."""
+        try:
+            await ctx.message.delete()
+            
+            # Проверяем роль по ID из конфига
+            sub_role = ctx.guild.get_role(config.SUBDIVISION_ROLE_ID)
+            if not sub_role or sub_role not in ctx.author.roles:
+                await ctx.send("❌ У вас нет прав для использования этой команды.", ephemeral=True, delete_after=10)
+                return
+            
+            if not subdivision.strip():
+                await ctx.send("❌ Название подразделения не может быть пустым.", ephemeral=True, delete_after=5)
+                return
+            
+            self.db.update_user(member.id, subdivision=subdivision.strip())
+            await ctx.send(f"✅ Подразделение для {member.name} установлено: {subdivision}", ephemeral=True, delete_after=5)
+        except Exception as e:
+            await ctx.send(f"❌ Ошибка при установке подразделения: {str(e)}")
 
 
 # --- Система уровней (ОПЦИОНАЛЬНО) ---
@@ -235,7 +303,7 @@ class LevelingSystem(commands.Cog):
             1509113757077475360,
             1509116456896434247
         ]
-        self.excluded_commands = ['profile', 'help', 'setper', 'setlvl', 'updatetable']
+        self.excluded_commands = ['profile', 'help', 'setprofile', 'setsubdivision', 'setlvl', 'updatetable']
 
     def calculate_random_xp(self, message):
         # Базовый диапазон опыта
@@ -255,32 +323,28 @@ class LevelingSystem(commands.Cog):
 
     async def add_experience(self, user_id, amount):
         try:
-            self.db.add_xp(user_id, amount)
             user_data = self.db.get_user(user_id)
-            await self.check_level_up(user_id, user_data['xp'])
+            old_level = user_data['level']
+            
+            self.db.add_xp(user_id, amount)
+            
+            new_level = self.db.get_user(user_id)['level']
+            if new_level > old_level:
+                await self._notify_level_up(user_id, new_level)
         except Exception as e:
             print(f"Ошибка при добавлении опыта: {str(e)}")
 
-    async def check_level_up(self, user_id, xp):
+    async def _notify_level_up(self, user_id, new_level):
         try:
-            user_data = self.db.get_user(user_id)
-            current_level = user_data['level']
-            
-            required_xp = config.LEVEL_MULTIPLIER * (current_level + 1)**2
-            
-            if xp >= required_xp:
-                new_level = current_level + 1
-                self.db.update_user(user_id, level=new_level)
-                member = self.bot.get_user(user_id)
-                if member:
-                    await member.send(f"Поздравляем! Вы поднялись на уровень {new_level}!")
-                    
-                leaderboard_channel = self.bot.get_channel(config.LEADERBOARD_CHANNEL_ID)
-                if leaderboard_channel:
-                    await leaderboard_channel.send(f"🎉 {member.mention} поднялся на уровень {new_level}!")
-                    
+            member = self.bot.get_user(user_id)
+            if member:
+                await member.send(f"Поздравляем! Вы поднялись на уровень {new_level}!")
+                
+            leaderboard_channel = self.bot.get_channel(config.LEADERBOARD_CHANNEL_ID)
+            if leaderboard_channel:
+                await leaderboard_channel.send(f"🎉 {member.mention} поднялся на уровень {new_level}!")
         except Exception as e:
-            print(f"Ошибка при проверке уровня: {str(e)}")
+            print(f"Ошибка при уведомлении о повышении уровня: {str(e)}")
 
     @commands.Cog.listener()
     async def on_message(self, message):

@@ -1,14 +1,13 @@
 import discord
 from discord.ext import commands, tasks
-from cogs.profile import ProfileSystem
 import config
 from utils.database import Database
-from operator import itemgetter
 
 class LeaderboardSystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
+        self.update_leaderboard.start()
 
     @commands.command(name="updatetable")
     @commands.has_permissions(administrator=True)
@@ -119,12 +118,6 @@ class LeaderboardSystem(commands.Cog):
         if not leaderboard_channel:
             print("Канал таблицы лидеров не найден при инициализации!")
             self.update_leaderboard.cancel()
-
-    # Теперь запускаем задачу в методе __init__ после её полного определения
-    def __init__(self, bot):
-        self.bot = bot
-        self.db = Database()
-        self.update_leaderboard.start()
 
 async def setup(bot):
     await bot.add_cog(LeaderboardSystem(bot))
