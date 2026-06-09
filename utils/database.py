@@ -63,19 +63,18 @@ class Database:
             return {}  # Возвращаем пустой словарь, а не None
 
     def update_user(self, user_id, **kwargs):
-        user = self.data.get(str(user_id), {})
-    
-    # Позиция обновляется только при явном указании
-        if 'position' not in kwargs and 'position' in user:
-            kwargs['position'] = user['position']
-    
-    # Другие параметры обновляются как обычно
-        for key, value in kwargs.items():
-            if key != 'position':
-                user[key] = value
-    
-        self.data[str(user_id)] = user
-        self.save_data()
+        """Обновляет данные пользователя"""
+        try:
+            user = self.get_user(user_id)
+            if 'xp' in kwargs and kwargs['xp'] < 0:
+                raise ValueError("Опыт не может быть отрицательным")
+            if 'level' in kwargs and kwargs['level'] < 1:
+                raise ValueError("Уровень не может быть меньше 1")
+            
+            user.update(kwargs)
+            self.save_data()
+        except Exception as e:
+            print(f"Ошибка при обновлении данных пользователя: {str(e)}")
 
     def add_xp(self, user_id, amount):
         try:

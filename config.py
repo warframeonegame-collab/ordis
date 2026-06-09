@@ -1,6 +1,10 @@
 # config.py
 
+import os
+
+from dotenv import load_dotenv
 # 🔑 Базовые настройки
+
 PREFIX = "."  # Префикс команд
 
 # 🔄 Каналы
@@ -14,7 +18,8 @@ GUEST_ROLE_ID = 1510307677409120256        # Роль "Гость"
 MEMBER_ROLE_ID = 1493217622123352134         # Роль "Участник клана"
 
 # 📊 Система уровней
-DB_FILE = '/app/data/database.json'  # Файл базы данных
+load_dotenv()
+DB_FILE = os.getenv('DB_FILE')  # Файл базы данных
 XP_PER_MESSAGE = 5  # Опыт за сообщение
 LEVEL_MULTIPLIER = 100  # Множитель уровня
 

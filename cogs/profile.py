@@ -214,18 +214,15 @@ class ProfileSystem(commands.Cog):
         except Exception as e:
             print(f"Ошибка при удалении сообщения: {str(e)}")
 
-    @commands.command(name="setposition")
+    @commands.command(name="setper")
     @commands.has_permissions(administrator=True)
-    async def set_position(self, ctx, member: discord.Member, *, position: str):
+    async def setper(self, ctx, member: discord.Member, *, position):
         try:
-            if not position.strip():
-                raise ValueError("Позиция не может быть пустой")
-            
+            await ctx.message.delete()
             self.db.update_user(member.id, position=position)
-            await ctx.send(f"Должность для {member.mention} успешно установлена", delete_after=10)
-        
+            await ctx.send(f"Должность для {member.name} установлена: {position}", ephemeral=True, delete_after=5)
         except Exception as e:
-            await ctx.send(f"Ошибка: {str(e)}", delete_after=10)
+            await ctx.send(f"Ошибка при установке должности: {str(e)}")
 
 
 
