@@ -174,18 +174,33 @@ class ProfileSystem(commands.Cog):
         # Проверяем права администратора
         if ctx.author.guild_permissions.administrator:
             # Добавляем раздел для администраторов
+            admin_cmds = (
+                "**Управление пользователями:**\n"
+                "`.setprofile @user --position \"текст\"` - полная настройка профиля\n"
+                "`.setprofile @user --level N` - установить уровень\n"
+                "`.setprofile @user --xp N` - установить опыт\n"
+                "`.setprofile @user --subdivision \"текст\"` - установить подразделение\n"
+                "**Система:**\n"
+                "`.updatetable` - обновить таблицу лидеров"
+            )
             embed.add_field(
                 name="🛠️ Административные команды",
-                value=(
-                    "**Управление пользователями:**\n"
-                    "`.setprofile @user --position \"текст\"` - полная настройка профиля\n"
-                    "`.setprofile @user --level N` - установить уровень\n"
-                    "`.setprofile @user --xp N` - установить опыт\n"
-                    "`.setprofile @user --subdivision \"текст\"` - установить подразделение\n"
-                    "`.setsubdivision @user <название>` - установить подразделение\n"
-                    "**Система:**\n"
-                    "`.updatetable` - обновить таблицу лидеров"
-                ),
+                value=admin_cmds,
+                inline=False
+            )
+        
+        # Проверяем доступ к setsubdivision по ролям
+        has_sub_permission = False
+        for role_id in config.SUBDIVISION_ROLE_IDS:
+            role = ctx.guild.get_role(role_id)
+            if role and role in ctx.author.roles:
+                has_sub_permission = True
+                break
+        
+        if has_sub_permission and not ctx.author.guild_permissions.administrator:
+            embed.add_field(
+                name="📁 Управление подразделениями",
+                value="`.setsubdivision @user <название>` - установить подразделение",
                 inline=False
             )
 
@@ -273,13 +288,19 @@ class ProfileSystem(commands.Cog):
 
     @commands.command(name="setsubdivision")
     async def setsubdivision(self, ctx, member: discord.Member, *, subdivision: str):
-        """Устанавливает подразделение пользователю (только для роли с правом назначения)."""
+        """Устанавливает подразделение пользователю (только для ролей с правом назначения)."""
         try:
             await ctx.message.delete()
             
-            # Проверяем роль по ID из конфига
-            sub_role = ctx.guild.get_role(config.SUBDIVISION_ROLE_ID)
-            if not sub_role or sub_role not in ctx.author.roles:
+            # Проверяем хотя бы одну из разрешённых ролей
+            has_permission = False
+            for role_id in config.SUBDIVISION_ROLE_IDS:
+                role = ctx.guild.get_role(role_id)
+                if role and role in ctx.author.roles:
+                    has_permission = True
+                    break
+            
+            if not has_permission:
                 await ctx.send("❌ У вас нет прав для использования этой команды.", ephemeral=True, delete_after=10)
                 return
             
