@@ -4,10 +4,18 @@ from datetime import datetime
 import config
 
 class Database:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.db_file = config.DB_FILE
+            cls._instance.data = cls._instance.load_data()
+            cls._instance._create_directory()
+        return cls._instance
+
     def __init__(self):
-        self.db_file = config.DB_FILE
-        self.data = self.load_data()
-        self._create_directory()
+        pass
 
     def _create_directory(self):
         """Создает директорию для файла БД, если её нет"""
@@ -70,6 +78,14 @@ class Database:
                 raise ValueError("Опыт не может быть отрицательным")
             if 'level' in kwargs and kwargs['level'] < 1:
                 raise ValueError("Уровень не может быть меньше 1")
+            if "position" in kwargs:
+                position = kwargs["position"]
+                if not isinstance(position, str):
+                    raise TypeError("Позиция должна быть строкой")
+                if not position.strip():
+                    raise ValueError("Позиция не может быть пустой")
+                if len(position) > 100:  # Пример ограничения длины
+                    raise ValueError("Позиция слишком длинная (максимум 100 символов)")
             
             user.update(kwargs)
             self.save_data()
@@ -82,11 +98,20 @@ class Database:
                 raise ValueError("Количество опыта не может быть отрицательным")
             
             user = self.get_user(user_id)
-        
-        # Обновляем только необходимые поля
-            self.db.update_user(user_id, 
-                                xp=user['xp'] + amount,
-                                level=self.calculate_level(user))
+            new_xp = user['xp'] + amount
+            new_level = user['level']
+            
+            # Рассчитываем новый уровень
+            while True:
+                required_xp = config.LEVEL_MULTIPLIER * new_level ** 2
+                if new_xp < required_xp:
+                    break
+                new_level += 1
+            
+            # Обновляем только необходимые поля
+            self.update_user(user_id, 
+                             xp=new_xp,
+                             level=new_level)
         
             print(f"Добавлено {amount} XP пользователю {user_id}")
         except Exception as e:

@@ -197,7 +197,7 @@ class ProfileSystem(commands.Cog):
                 name="🛠️ Административные команды",
                 value=(
                     "**Управление пользователями:**\n"
-                    "`.setposition <пользователь>` - изменение должности\n"
+                    "`.setper <пользователь>` - изменение должности\n"
                     "**Система:**\n"
                     "`.updatetable` - обновить таблицу лидеров"
                 ),
@@ -223,9 +223,6 @@ class ProfileSystem(commands.Cog):
             await ctx.send(f"Должность для {member.name} установлена: {position}", ephemeral=True, delete_after=5)
         except Exception as e:
             await ctx.send(f"Ошибка при установке должности: {str(e)}")
-
-
-
 
 
 # --- Система уровней (ОПЦИОНАЛЬНО) ---
@@ -258,10 +255,9 @@ class LevelingSystem(commands.Cog):
 
     async def add_experience(self, user_id, amount):
         try:
+            self.db.add_xp(user_id, amount)
             user_data = self.db.get_user(user_id)
-            new_xp = user_data['xp'] + amount
-            self.db.update_user(user_id, xp=new_xp)
-            await self.check_level_up(user_id, new_xp)
+            await self.check_level_up(user_id, user_data['xp'])
         except Exception as e:
             print(f"Ошибка при добавлении опыта: {str(e)}")
 
