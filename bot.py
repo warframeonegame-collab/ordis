@@ -28,6 +28,22 @@ intents.presences = True
 bot = commands.Bot(command_prefix='.', intents=intents)
 bot.remove_command("help")
 
+# Глобальный кэш для предотвращения дублирования команд
+_processed_commands = set()
+_duplicate_lock = asyncio.Lock()
+
+@bot.before_invoke
+async def _prevent_duplicate_commands(ctx):
+    """Отменяет выполнение команды, если это сообщение уже было обработано."""
+    async with _duplicate_lock:
+        message_id = ctx.message.id
+        if message_id in _processed_commands:
+            raise commands.CommandError("Duplicate command ignored")
+        _processed_commands.add(message_id)
+        # Очистка старых записей (держим не больше 1000)
+        if len(_processed_commands) > 1000:
+            _processed_commands.clear()
+
 async def load_cogs():
     try:
         cog_files = [f for f in os.listdir('cogs') if f.endswith('.py')]
@@ -49,13 +65,17 @@ async def load_cogs():
     except Exception as e:
         logging.critical(f'❌ Критическая ошибка при загрузке Cogs: {str(e)}')
 
+async def setup_hook():
+    """Загружает коги ОДИН раз при старте бота (до on_ready)."""
+    logging.info('--- Загружаю расширения... ---')
+    await load_cogs()
+
+bot.setup_hook = setup_hook
+
 @bot.event
 async def on_ready():
     logging.info(f'🤖 Бот {bot.user} успешно авторизован!')
     logging.info(f'ID бота: {bot.user.id}')
-    logging.info('--- Загружаю расширения... ---')
-
-    await load_cogs()
 
     await bot.change_presence(activity=discord.Game(name="Warframe"))
     logging.info('Статус установлен: Играет в Warframe')
@@ -64,6 +84,9 @@ async def on_ready():
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
+    error_str = str(error)
+    if "Duplicate command ignored" in error_str or "Command not allowed in this channel" in error_str:
+        return  # Игнорируем дубликаты и запрещённые каналы
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ У вас недостаточно прав для выполнения этой команды.", ephemeral=True)
 

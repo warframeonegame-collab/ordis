@@ -18,7 +18,12 @@ class LeaderboardSystem(commands.Cog):
             return
 
         try:
-            await ctx.message.delete()
+            # Удаляем сообщение с обработкой ошибки 404 (уже удалено)
+            try:
+                await ctx.message.delete()
+            except discord.NotFound:
+                pass  # Сообщение уже удалено, игнорируем
+            
             # Принудительно загружаем актуальные данные
             self.db.data = self.db.load_data()
             
@@ -52,14 +57,21 @@ class LeaderboardSystem(commands.Cog):
             
             # Очищаем канал и отправляем новое сообщение
             async with leaderboard_channel.typing():
-                await leaderboard_channel.purge()
+                try:
+                    await leaderboard_channel.purge()
+                except discord.NotFound:
+                    pass  # Канал уже пуст или сообщений нет, игнорируем
                 await leaderboard_channel.send(embed=embed)
             
             await ctx.send("Таблица лидеров успешно обновлена!", ephemeral=True)
             
         except Exception as e:
-            await ctx.send(f"Произошла ошибка при обновлении таблицы: {str(e)}", ephemeral=True)
-            print(f"Ошибка при ручном обновлении таблицы: {str(e)}")
+            error_msg = str(e)
+            # Не показываем ошибки удаления сообщений пользователю
+            if "10008" in error_msg or "Unknown Message" in error_msg:
+                return
+            await ctx.send(f"Произошла ошибка при обновлении таблицы: {error_msg}", ephemeral=True)
+            print(f"Ошибка при ручном обновлении таблицы: {error_msg}")
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):

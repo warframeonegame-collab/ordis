@@ -17,8 +17,6 @@ class ProfileSystem(commands.Cog):
             1494776417546666106,
             1494765342369517568
         ]
-        self._command_cache = {}  # Кэш для предотвращения повторного выполнения команд
-        self._cache_ttl = 2.0  # Время жизни кэша (сек)
         self.bot_profile = {
             'nickname': '🤖 Ордис [ERROR_404]',
             'position': 'В процессе... [LOADING...]',
@@ -45,27 +43,11 @@ class ProfileSystem(commands.Cog):
     ]
 }
 
-    # Предотвращение повторного выполнения одной и той же команды
-    async def _check_duplicate_command(self, ctx) -> bool:
-        now = datetime.now().timestamp()
-        key = f"{ctx.command.name}:{ctx.message.id}:{ctx.author.id}"
-        if key in self._command_cache:
-            if now - self._command_cache[key] < self._cache_ttl:
-                return True  # Это дубликат
-        self._command_cache[key] = now
-        # Очистка старых записей
-        for k in list(self._command_cache.keys()):
-            if now - self._command_cache[k] > self._cache_ttl:
-                del self._command_cache[k]
-        return False
-
     # Метод, который будет выполняться перед каждой командой
     async def cog_before_invoke(self, ctx):
+        """Проверяет, разрешена ли команда в данном канале."""
         if ctx.channel.id in self.forbidden_channels:
-            return False
-        # Проверка на дубликат команды
-        if await self._check_duplicate_command(ctx):
-            return False
+            raise commands.CommandError("Command not allowed in this channel")
 
     # --- Логика профиля (РАБОТАЕТ ВСЕГДА) ---
 
@@ -127,9 +109,6 @@ class ProfileSystem(commands.Cog):
             inline=False
         )
 
-        # Прогресс бар
-        xp_bar = "█" * int((xp_into_level / current_level_xp_cap) * 20)
-        embed.add_field(name="🎯 Прогресс уровня", value=f"{xp_bar}", inline=False)
         embed.add_field(
             name="📊 До следующего уровня", 
             value=f"Осталось {remaining_xp} XP",
