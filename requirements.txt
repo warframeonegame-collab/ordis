@@ -1,0 +1,6 @@
+discord.py
+pyTelegramBotAPI
+requests
+httpcore
+httpx
+httpx-sse
