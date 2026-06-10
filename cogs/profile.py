@@ -17,6 +17,8 @@ class ProfileSystem(commands.Cog):
             1494776417546666106,
             1494765342369517568
         ]
+        self._command_cache = {}  # Кэш для предотвращения повторного выполнения команд
+        self._cache_ttl = 2.0  # Время жизни кэша (сек)
         self.bot_profile = {
             'nickname': '🤖 Ордис [ERROR_404]',
             'position': 'В процессе... [LOADING...]',
@@ -43,9 +45,26 @@ class ProfileSystem(commands.Cog):
     ]
 }
 
+    # Предотвращение повторного выполнения одной и той же команды
+    async def _check_duplicate_command(self, ctx) -> bool:
+        now = datetime.now().timestamp()
+        key = f"{ctx.command.name}:{ctx.message.id}:{ctx.author.id}"
+        if key in self._command_cache:
+            if now - self._command_cache[key] < self._cache_ttl:
+                return True  # Это дубликат
+        self._command_cache[key] = now
+        # Очистка старых записей
+        for k in list(self._command_cache.keys()):
+            if now - self._command_cache[k] > self._cache_ttl:
+                del self._command_cache[k]
+        return False
+
     # Метод, который будет выполняться перед каждой командой
     async def cog_before_invoke(self, ctx):
         if ctx.channel.id in self.forbidden_channels:
+            return False
+        # Проверка на дубликат команды
+        if await self._check_duplicate_command(ctx):
             return False
 
     # --- Логика профиля (РАБОТАЕТ ВСЕГДА) ---
@@ -78,8 +97,13 @@ class ProfileSystem(commands.Cog):
                 user_tier = display_name
                 break
 
-        # Рассчитываем необходимый опыт до следующего уровня (только для отображения)
-        required_xp = config.LEVEL_MULTIPLIER * (user['level'] + 1)**2 - user['xp']
+        # Текущий опыт, необходимый для текущего уровня
+        current_level_xp_cap = config.LEVEL_MULTIPLIER * user['level'] ** 2
+        # Опыт внутри текущего уровня (если уровень > 1, вычитаем опыт предыдущего уровня)
+        xp_into_level = user['xp']
+        # Сколько опыта нужно для следующего уровня
+        next_level_xp = config.LEVEL_MULTIPLIER * (user['level'] + 1) ** 2
+        remaining_xp = next_level_xp - xp_into_level
 
         embed = discord.Embed(
             title=f"Профиль {member.display_name}",
@@ -99,14 +123,18 @@ class ProfileSystem(commands.Cog):
         embed.add_field(
             name="📅 Дата вступления", 
             value=f"{user['joined_at']}\n"
-                  f"🏆 Уровень: {user['level']}\n"
-                  f"🎯 Опыт: {user['xp']}/{required_xp}",
+                  f"🏆 Уровень: {user['level']}",
             inline=False
         )
 
         # Прогресс бар
-        xp_bar = "█" * int((user['xp'] / (config.LEVEL_MULTIPLIER * user['level']**2)) * 20)
+        xp_bar = "█" * int((xp_into_level / current_level_xp_cap) * 20)
         embed.add_field(name="🎯 Прогресс уровня", value=f"{xp_bar}", inline=False)
+        embed.add_field(
+            name="📊 До следующего уровня", 
+            value=f"Осталось {remaining_xp} XP",
+            inline=False
+        )
         await ctx.message.delete()
         await ctx.send(embed=embed, delete_after=60)
 

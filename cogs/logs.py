@@ -13,6 +13,21 @@ class Logs(commands.Cog):
         self.admin_actions = defaultdict(list)  # Хранилище действий администраторов
         self.action_timeout = timedelta(seconds=10)  # Временной интервал для отслеживания
         self.move_requests = {}  # Отслеживание запросов на перемещение
+        self._processed_events = {}  # Кэш для предотвращения дублирования событий
+        self._cache_ttl = 2.0  # Время жизни кэша (сек)
+
+    def _is_duplicate(self, event_key: str) -> bool:
+        """Проверяет, не было ли это событие уже обработано (для предотвращения дублирования)."""
+        now = datetime.now().timestamp()
+        if event_key in self._processed_events:
+            if now - self._processed_events[event_key] < self._cache_ttl:
+                return True
+        self._processed_events[event_key] = now
+        # Очистка старых записей
+        for key in list(self._processed_events.keys()):
+            if now - self._processed_events[key] > self._cache_ttl:
+                del self._processed_events[key]
+        return False
 
     # Вспомогательная функция для отправки лога с указанием исполнителя
     async def send_log(self, title, description, executor=None, color=discord.Color.gold()):
@@ -47,6 +62,10 @@ class Logs(commands.Cog):
     # Логирование выполненных команд
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
+        # Создаем уникальный ключ: команда + ID сообщения + ID автора
+        event_key = f"cmd_complete:{ctx.message.id}:{ctx.author.id}"
+        if self._is_duplicate(event_key):
+            return
         await self.send_log(
             title=f"Выполнена команда: `{ctx.command}`",
             description=f"Автор: {ctx.author.mention}\n"
@@ -60,6 +79,9 @@ class Logs(commands.Cog):
     # Логирование ошибок команд
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
+        event_key = f"cmd_error:{ctx.message.id}:{type(error).__name__}"
+        if self._is_duplicate(event_key):
+            return
         await self.send_log(
             title=f"Ошибка команды: `{ctx.command}`",
             description=f"Автор: {ctx.author.mention}\n"
