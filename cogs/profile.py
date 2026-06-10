@@ -180,6 +180,15 @@ class ProfileSystem(commands.Cog):
             inline=False
         )
 
+        # Warframe команды
+        embed.add_field(
+            name="🌌 Warframe",
+            value=(
+                "`.wf` - обновить статус Warframe в канале таймеров\n"
+            ),
+            inline=False
+        )
+
         # Проверяем права администратора
         if ctx.author.guild_permissions.administrator:
             # Добавляем раздел для администраторов
