@@ -61,7 +61,9 @@ class ProfileSystem(commands.Cog):
 
         try:
             self.db.refresh(member.id)
-            user = self.db.get_user(member.id)
+            # Передаём реальную дату вступления на сервер из Discord
+            real_joined = member.joined_at.strftime('%d.%m.%Y') if member.joined_at else None
+            user = self.db.get_user(member.id, joined_at=real_joined)
             
             if not user:
                 await ctx.send("Пользователь не найден в базе данных")

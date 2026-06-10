@@ -53,18 +53,21 @@ class Database:
         """Проверяет существование пользователя"""
         return str(user_id) in self.data
 
-    def get_user(self, user_id):
-        """Получает данные пользователя"""
+    def get_user(self, user_id, joined_at=None):
+        """Получает данные пользователя.
+        joined_at — необязательная строка даты (DD.MM.YYYY), используется при первом создании записи."""
         try:
             user_id = str(user_id)
             if user_id not in self.data:
+                # Если передана конкретная дата — используем её, иначе текущую
+                date_str = joined_at if joined_at else datetime.now().strftime('%d.%m.%Y')
                 self.data[str(user_id)] = {
                     'nickname': '',
                     'position': None,
                     'subdivision': None,
-                    'joined_at': datetime.now().strftime('%d.%m.%Y'),
+                    'joined_at': date_str,
                     'xp': 0,
-                    'description': "",  # Исправлено опечатка в 'description'
+                    'description': "",
                     'level': 1
                 }
                 self.save_data()

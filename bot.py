@@ -80,6 +80,18 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="Warframe"))
     logging.info('Статус установлен: Играет в Warframe')
 
+@bot.command(name="stop")
+@commands.is_owner()
+async def stop_bot(ctx):
+    """Останавливает бота (только для владельца)."""
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+    await ctx.send("🔴 Бот останавливается...", delete_after=5)
+    logging.info(f"Бот остановлен по команде пользователя {ctx.author} ({ctx.author.id})")
+    await bot.close()
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
@@ -89,6 +101,8 @@ async def on_command_error(ctx, error):
         return  # Игнорируем дубликаты и запрещённые каналы
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ У вас недостаточно прав для выполнения этой команды.", ephemeral=True)
+    elif isinstance(error, commands.NotOwner):
+        await ctx.send("❌ Эта команда доступна только владельцу бота.", delete_after=5)
 
 if __name__ == '__main__':
     try:

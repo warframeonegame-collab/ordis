@@ -3,10 +3,12 @@
 import discord
 from discord.ext import commands
 from config import VERIFICATION_CHANNEL_ID, WELCOME_CHANNEL_ID, GUEST_ROLE_ID, MEMBER_ROLE_ID, NICKNAME_MAX_LENGTH
+from utils.database import Database
 
 class Verification(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = Database()
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -17,6 +19,10 @@ class Verification(commands.Cog):
 
         if guest_role:
             await member.add_roles(guest_role)
+
+        # Создаём запись пользователя с реальной датой вступления из Discord
+        real_joined = member.joined_at.strftime('%d.%m.%Y') if member.joined_at else None
+        self.db.get_user(member.id, joined_at=real_joined)
 
         await welcome_channel.send(
             f"Добро пожаловать, {member.mention}! "
