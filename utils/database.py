@@ -24,16 +24,48 @@ class Database:
             os.makedirs(directory)
 
     def load_data(self):
-        """Загружает данные из JSON-файла"""
+        """Загружает данные из JSON-файла и автоматически добавляет недостающие поля."""
         try:
             if os.path.exists(self.db_file):
                 with open(self.db_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    for user_id in data:
-                        if 'position' not in data[user_id]:
-                            data[user_id]['position'] = None
-                        if 'subdivision' not in data[user_id]:
-                            data[user_id]['subdivision'] = None
+                
+                DEFAULT_FIELDS = {
+                    'position': None,
+                    'subdivision': None,
+                    'achievements': {},
+                    'warns': [],
+                    'saved_roles': [],
+                    'banned': False,
+                    'ban_reason': None,
+                    'saved_position': None,
+                    'saved_subdivision': None,
+                    'description': "",
+                }
+                
+                MIGRATIONS = {
+                    'discription': 'description',
+                }
+                
+                needs_save = False
+                for user_id in data:
+                    # Миграция старых ключей
+                    for old_key, new_key in MIGRATIONS.items():
+                        if old_key in data[user_id]:
+                            data[user_id][new_key] = data[user_id].pop(old_key)
+                            needs_save = True
+                    
+                    # Добавление недостающих полей
+                    for key, default_value in DEFAULT_FIELDS.items():
+                        if key not in data[user_id]:
+                            data[user_id][key] = default_value
+                            needs_save = True
+                
+                # Сохраняем обновлённую структуру, если были изменения
+                if needs_save:
+                    with open(self.db_file, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                
                 return data
             return {}
         except Exception as e:
@@ -68,7 +100,14 @@ class Database:
                     'joined_at': date_str,
                     'xp': 0,
                     'description': "",
-                    'level': 1
+                    'level': 1,
+                    'achievements': {},
+                    'warns': [],
+                    'saved_roles': [],
+                    'banned': False,
+                    'ban_reason': None,
+                    'saved_position': None,
+                    'saved_subdivision': None
                 }
                 self.save_data()
             return self.data[user_id]  # Явно возвращаем словарь
@@ -86,12 +125,26 @@ class Database:
                 raise ValueError("Уровень не может быть меньше 1")
             if "position" in kwargs:
                 position = kwargs["position"]
-                if not isinstance(position, str):
+                if position is None:
+                    pass  # разрешаем установить None (будет в user.update)
+                elif not isinstance(position, str):
                     raise TypeError("Позиция должна быть строкой")
-                if not position.strip():
-                    raise ValueError("Позиция не может быть пустой")
-                if len(position) > 100:  # Пример ограничения длины
+                elif not position.strip():
+                    # Пустая строка = сброс
+                    kwargs["position"] = None
+                elif len(position) > 100:
                     raise ValueError("Позиция слишком длинная (максимум 100 символов)")
+            
+            if "subdivision" in kwargs:
+                subdivision = kwargs["subdivision"]
+                if subdivision is None:
+                    pass
+                elif not isinstance(subdivision, str):
+                    raise TypeError("Подразделение должно быть строкой")
+                elif not subdivision.strip() or subdivision.strip().lower() == "remove":
+                    kwargs["subdivision"] = None
+                elif len(subdivision) > 100:
+                    raise ValueError("Подразделение слишком длинное (максимум 100 символов)")
             
             user.update(kwargs)
             self.save_data()

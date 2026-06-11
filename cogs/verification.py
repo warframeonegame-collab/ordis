@@ -2,6 +2,7 @@
 
 import discord
 from discord.ext import commands
+import re
 from config import VERIFICATION_CHANNEL_ID, WELCOME_CHANNEL_ID, GUEST_ROLE_ID, MEMBER_ROLE_ID, NICKNAME_MAX_LENGTH
 from utils.database import Database
 
@@ -45,8 +46,8 @@ class Verification(commands.Cog):
                 await message.channel.send(f"Ник слишком длинный! Максимум {NICKNAME_MAX_LENGTH} символов.", delete_after=5)
                 return
 
-            if not message.content.isalnum():
-                await message.channel.send("Ник может содержать только латинские буквы и цифры.", delete_after=5)
+            if not re.match(r'^[a-zA-Z0-9_\-\.\[\] ]+$', message.content):
+                await message.channel.send("Ник может содержать только латинские буквы, цифры, символы '_', '-', '.', '[', ']' и пробел.", delete_after=5)
                 return
 
             member = message.author

@@ -1,9 +1,7 @@
-from collections import defaultdict
-from enum import member
-from collections import defaultdict
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta
+from collections import defaultdict
 import asyncio
 
 class Logs(commands.Cog):
@@ -221,28 +219,27 @@ class Logs(commands.Cog):
                     executor = entry.user
                     break
 
+            desc = f"Пользователь: {after.mention} ({after.id})\n" \
+                   f"Сервер: {after.guild.name}\n"
 
-        role_list = []
-        for role in added_roles:
-            role_list.append(f"+ {role.mention} ({role.name})")
-        for role in removed_roles:
-            role_list.append(f"- {role.mention} ({role.name})")
+            if added_roles:
+                added_desc = []
+                for role in added_roles:
+                    added_desc.append(f"+ {role.mention} ({role.name})")
+                desc += "**Добавленные роли:**\n" + "\n".join(added_desc) + "\n"
 
+            if removed_roles:
+                removed_desc = []
+                for role in removed_roles:
+                    removed_desc.append(f"- {role.mention} ({role.name})")
+                desc += "**Удалённые роли:**\n" + "\n".join(removed_desc)
 
-        desc = f"Пользователь: {after.mention} ({after.id})\n" \
-               f"Сервер: {after.guild.name}\n"
-        if added_roles:
-            desc += f"**Добавленные роли:**\n{'\n'.join([r for r in role_list if r.startswith('+')])}\n"
-        if removed_roles:
-            desc += f"**Удалённые роли:**\n{'\n'.join([r for r in role_list if r.startswith('-')])}"
-
-
-        await self.send_log(
-            title="ИЗМЕНЕНИЕ РОЛЕЙ ПОЛЬЗОВАТЕЛЯ",
-            description=desc,
-            executor=executor,
-            color=discord.Color.teal()
-        )
+            await self.send_log(
+                title="ИЗМЕНЕНИЕ РОЛЕЙ ПОЛЬЗОВАТЕЛЯ",
+                description=desc.strip(),
+                executor=executor,
+                color=discord.Color.teal()
+            )
 
     # Логирование бана пользователя
     @commands.Cog.listener()
