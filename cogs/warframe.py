@@ -23,6 +23,9 @@ CYCLE_TRANSLATIONS = {
 DUVIRI_STATE_TRANSLATIONS = {
     "anger": "😠 Гнев",
     "joy": "😊 Радость",
+    "envy": "😒 Зависть",
+    "sorrow": "😢 Печаль",
+    "fear": "😨 Страх",
 }
 
 BARO_ITEM_TRANSLATIONS = {
