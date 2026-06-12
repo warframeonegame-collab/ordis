@@ -466,10 +466,9 @@ class LevelingSystem(commands.Cog):
             return
         if message.channel.id in self.forbidden_channels:
             return
+        # Не начисляем опыт за любые команды
         if message.content.startswith(self.bot.command_prefix):
-            command_name = message.content.split()[0].split(self.bot.command_prefix)[1]
-            if command_name in self.excluded_commands:
-                return
+            return
         random_xp = self.calculate_random_xp(message)
         await self.add_experience(message.author.id, random_xp)
 
