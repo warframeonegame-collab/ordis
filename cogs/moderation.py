@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from utils.database import Database
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 # ID ролей, которые могут использовать команды модерации
@@ -346,6 +346,128 @@ class Moderation(commands.Cog):
         except Exception as e:
             logging.error(f"[Moderation] Ошибка при анбане {member.id}: {e}")
             await ctx.send("❌ Произошла ошибка при разбане.", delete_after=10)
+
+
+    # ==================== CLEAR ====================
+
+    def _parse_period(self, text: str) -> timedelta | None:
+        """Парсит строку периода (например '5m', '2h', '1d') и возвращает timedelta."""
+        if not text:
+            return None
+        text = text.strip().lower()
+        if not text[-1].isdigit():
+            unit = text[-1]
+            num_str = text[:-1]
+        else:
+            return None
+
+        try:
+            num = int(num_str)
+        except (ValueError, IndexError):
+            return None
+
+        if unit == 'm':
+            return timedelta(minutes=num)
+        elif unit == 'h':
+            return timedelta(hours=num)
+        elif unit == 'd':
+            return timedelta(days=num)
+        return None
+
+    @commands.command(name="clear")
+    @commands.has_permissions(administrator=True)
+    async def clear(self, ctx, *args):
+        """
+        Очищает сообщения в чате.
+        Использование:
+          .clear <период>           — удалить все сообщения за период
+          .clear @user              — удалить все сообщения пользователя
+          .clear @user <период>     — удалить сообщения пользователя за период
+        Периоды: Xm (минуты), Xh (часы), Xd (дни)
+        """
+        try:
+            await ctx.message.delete()
+        except Exception:
+            pass
+
+        target_user = None
+        period_str = None
+
+        for arg in args:
+            # Проверяем, является ли аргумент упоминанием пользователя
+            if ctx.message.mentions:
+                # arg может быть строкой вида '<@123456789>' или '<@!123456789>'
+                for member in ctx.message.mentions:
+                    if str(member.id) in arg:
+                        target_user = member
+                        break
+            elif arg.startswith('<@') and arg.endswith('>'):
+                # Попытка найти пользователя по ID из упоминания
+                user_id = arg.strip('<@!>')
+                try:
+                    target_user = await ctx.guild.fetch_member(int(user_id))
+                except (ValueError, discord.NotFound):
+                    pass
+            elif self._parse_period(arg) is not None:
+                period_str = arg
+            else:
+                # Попробуем распознать как период без суффикса (на случай опечатки)
+                if self._parse_period(arg) is not None:
+                    period_str = arg
+
+        # Если ничего не указано
+        if not target_user and not period_str:
+            await ctx.send(
+                "❌ Укажите @user или период для использования команды",
+                delete_after=10
+            )
+            return
+
+        # Вычисляем время отсечки
+        if period_str:
+            delta = self._parse_period(period_str)
+            cutoff = ctx.message.created_at - delta
+        else:
+            # Пользователь указан без периода — удаляем ВСЕ его сообщения (до 14-дневного лимита Discord)
+            # Discord API: bulk delete доступен только для сообщений < 14 дней
+            cutoff = ctx.message.created_at - timedelta(days=14)
+
+        # Проверка на 14-дневный лимит Discord
+        if (ctx.message.created_at - cutoff).days > 14:
+            cutoff = ctx.message.created_at - timedelta(days=14)
+
+        # Функция фильтрации по автору
+        def check_author(message):
+            if target_user:
+                return message.author.id == target_user.id
+            return True
+
+        # Удаляем сообщения
+        try:
+            deleted = await ctx.channel.purge(
+                limit=2000,
+                before=ctx.message.created_at,
+                after=cutoff,
+                check=check_author
+            )
+            count = len(deleted)
+        except discord.Forbidden:
+            await ctx.send("❌ У меня нет прав для удаления сообщений в этом канале.", delete_after=10)
+            return
+        except discord.HTTPException as e:
+            await ctx.send(f"❌ Ошибка при удалении сообщений: {e}", delete_after=10)
+            return
+
+        # Формируем ответ
+        if target_user:
+            msg = f"✅ Удалено **{count}** сообщений пользователя {target_user.mention}"
+        else:
+            msg = f"✅ Удалено **{count}** сообщений"
+
+        if period_str:
+            msg += f" за период {period_str}"
+
+        sent = await ctx.send(msg, delete_after=5)
 
 
 async def setup(bot):
